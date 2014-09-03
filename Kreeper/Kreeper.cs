@@ -31,7 +31,7 @@ namespace Kreeper
         public TypeData(Type t)
         {
             type = t;
-            fields = t.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance);
+            fields = t.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
             methods = t.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
         }
     }
@@ -170,7 +170,7 @@ namespace Kreeper
                             {
                                 if (GUILayout.Button(f.Name))
                                 {
-
+                                    print(f.GetValue(FindObjectOfType(assemblies[selectedAssembly].types[selectedType].type)));
                                 }
                             }
                         }
