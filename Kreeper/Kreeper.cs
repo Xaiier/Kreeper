@@ -27,12 +27,14 @@ namespace Kreeper
         public Type type;
         public FieldInfo[] fields;
         public MethodInfo[] methods;
+        public string name;
 
         public TypeData(Type t)
         {
             type = t;
             fields = t.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
             methods = t.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            name = t.Name;
         }
     }
 
@@ -48,13 +50,16 @@ namespace Kreeper
 
         string typeSearch = "";
         Vector2 typeScroll = new Vector2(0, 0);
-        int selectedType = 0;
 
         string variableSearch = "";
         Vector2 variableScroll = new Vector2(0, 0);
 
         string methodSearch = "";
         Vector2 methodScroll = new Vector2(0, 0);
+
+        TypeData currentType;
+
+        Color highlightColor = XKCDColors.LightBlue;
 
         private void Start()
         {
@@ -67,7 +72,7 @@ namespace Kreeper
                     AssemblyLoader.LoadedAssembly current = enumerator.Current;
 
                     string name = current.assembly.FullName.Substring(0, current.assembly.FullName.IndexOf(','));
-                    string version = current.assembly.FullName.Substring(current.assembly.FullName.IndexOf(','), current.assembly.FullName.IndexOf(',',current.assembly.FullName.IndexOf(',')));
+                    string version = current.assembly.FullName.Substring(current.assembly.FullName.IndexOf(','), current.assembly.FullName.IndexOf(',',current.assembly.FullName.IndexOf(',')));//TODO this doesn't work
 
                     List<TypeData> types = new List<TypeData>();
                     foreach (Type t in current.assembly.GetTypes())
@@ -78,6 +83,8 @@ namespace Kreeper
                     assemblies.Add(new AssemblyData(name, version, types));
                 }
             }
+
+            currentType = assemblies[0].types[0];
         }
         private void Awake()
         {
@@ -103,24 +110,23 @@ namespace Kreeper
                     {
                         GUILayout.BeginVertical();
                         {
-                            List<string> contents = new List<string>();
+                            int i = 0;
                             foreach (AssemblyData ad in assemblies)
                             {
                                 if (ad.name.ToLower().StartsWith(assemblySearch.ToLower()))
                                 {
-                                    contents.Add(ad.name);
+                                    if (selectedAssembly == i)
+                                    {
+                                        GUI.contentColor = highlightColor;
+                                    }
+                                    if (GUILayout.Button(ad.name))
+                                    {
+                                        selectedAssembly = i;
+                                        typeScroll = new Vector2(0, 0);
+                                    }
+                                    GUI.contentColor = Color.white;
                                 }
-                            }
-                            int prev = selectedAssembly;
-                            if (selectedAssembly > contents.Count)
-                            {
-                                selectedAssembly = 0;
-                            }
-                            selectedAssembly = GUILayout.SelectionGrid(selectedAssembly, contents.ToArray(), 1);
-                            if (selectedAssembly != prev)
-                            {
-                                typeScroll.y = 0;
-                                selectedType = 0;
+                                i++;
                             }
                         }
                         GUILayout.EndVertical();
@@ -137,19 +143,24 @@ namespace Kreeper
                     {
                         GUILayout.BeginVertical();
                         {
-                            List<string> contents = new List<string>();
+                            int i = 0;
                             foreach (TypeData td in assemblies[selectedAssembly].types)
                             {
-                                if (td.type.Name.ToLower().StartsWith(typeSearch.ToLower()))
+                                if (td.name.ToLower().StartsWith(typeSearch.ToLower()))
                                 {
-                                    contents.Add(td.type.Name);
+                                    if (currentType == td)
+                                    {
+                                        GUI.contentColor = highlightColor;
+                                    }
+                                    if (GUILayout.Button(td.name))
+                                    {
+                                        currentType = assemblies[selectedAssembly].types[i];
+                                        variableScroll = new Vector2(0, 0);
+                                        methodScroll = new Vector2(0, 0);
+                                    }
+                                    GUI.contentColor = Color.white;
                                 }
-                            }
-                            int prev = selectedType;
-                            selectedType = GUILayout.SelectionGrid(selectedType, contents.ToArray(), 1);
-                            if (selectedType != prev)
-                            {
-
+                                i++;
                             }
                         }
                         GUILayout.EndVertical();
@@ -158,45 +169,54 @@ namespace Kreeper
                 }
                 GUILayout.EndVertical();
 
-                GUILayout.BeginVertical(GUILayout.Width(200));
+                GUILayout.BeginVertical("box");
                 {
-                    GUILayout.Label("Variables");
-                    variableSearch = GUILayout.TextField(variableSearch);
-                    variableScroll = GUILayout.BeginScrollView(variableScroll, "box");
+                    GUILayout.Label(currentType.type.Assembly.FullName.Substring(0, currentType.type.Assembly.FullName.IndexOf(',')) + " - " + currentType.name);
+                    GUILayout.BeginHorizontal();
                     {
-                        foreach (FieldInfo f in assemblies[selectedAssembly].types[selectedType].fields)
+                        GUILayout.BeginVertical(GUILayout.Width(200));
                         {
-                            if (f.Name.ToLower().StartsWith(variableSearch.ToLower()))
+                            GUILayout.Label("Variables");
+                            variableSearch = GUILayout.TextField(variableSearch);
+                            variableScroll = GUILayout.BeginScrollView(variableScroll, "box");
                             {
-                                if (GUILayout.Button(f.Name))
+                                foreach (FieldInfo f in currentType.fields)
                                 {
-                                    print(f.GetValue(FindObjectOfType(assemblies[selectedAssembly].types[selectedType].type)));
+                                    if (f.Name.ToLower().StartsWith(variableSearch.ToLower()))
+                                    {
+                                        if (GUILayout.Button(f.Name))
+                                        {
+                                            print(f.GetValue(FindObjectOfType(currentType.type)));
+                                        }
+                                    }
                                 }
                             }
+                            GUILayout.EndScrollView();
                         }
-                    }
-                    GUILayout.EndScrollView();
-                }
-                GUILayout.EndVertical();
+                        GUILayout.EndVertical();
 
-                GUILayout.BeginVertical(GUILayout.Width(200));
-                {
-                    GUILayout.Label("Methods");
-                    methodSearch = GUILayout.TextField(methodSearch);
-                    methodScroll = GUILayout.BeginScrollView(methodScroll, "box");
-                    {
-                        foreach (MethodInfo m in assemblies[selectedAssembly].types[selectedType].methods)
+                        GUILayout.BeginVertical(GUILayout.Width(200));
                         {
-                            if (m.Name.ToLower().StartsWith(methodSearch.ToLower()))
+                            GUILayout.Label("Methods");
+                            methodSearch = GUILayout.TextField(methodSearch);
+                            methodScroll = GUILayout.BeginScrollView(methodScroll, "box");
                             {
-                                if (GUILayout.Button(m.Name))
+                                foreach (MethodInfo m in currentType.methods)
                                 {
+                                    if (m.Name.ToLower().StartsWith(methodSearch.ToLower()))
+                                    {
+                                        if (GUILayout.Button(m.Name))
+                                        {
 
+                                        }
+                                    }
                                 }
                             }
+                            GUILayout.EndScrollView();
                         }
+                        GUILayout.EndVertical();
                     }
-                    GUILayout.EndScrollView();
+                    GUILayout.EndHorizontal();
                 }
                 GUILayout.EndVertical();
             }
