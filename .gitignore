@@ -2,4 +2,5 @@
 *.sln
 *.suo
 *.csproj
-Kreeper/*
+Kreeper/bin
+Kreeper/obj
