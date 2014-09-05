@@ -41,7 +41,7 @@ namespace Kreeper
     [KSPAddon(KSPAddon.Startup.Instantly, true)]
     public class Kreeper : MonoBehaviour
     {
-        Rect window = new Rect(0, 0, 1, 500);
+        Rect window = new Rect(0, 0, 800, 0);
         List<AssemblyData> assemblies = new List<AssemblyData>();
 
         string assemblySearch = "";
@@ -60,6 +60,9 @@ namespace Kreeper
         TypeData currentType;
 
         Color highlightColor = XKCDColors.LightBlue;
+
+        bool[] activeModes = new bool[5];
+        string[] modeNames = { "Search", "Watch", "Execute", "Logs", "Info" };
 
         private void Start()
         {
@@ -92,7 +95,8 @@ namespace Kreeper
         }
         private void Update()
         {
-
+            window.width = 800;
+            window.height = 0;
         }
         private void OnGUI()
         {
@@ -100,9 +104,49 @@ namespace Kreeper
         }
         private void onWindow(int windowID)
         {
+            GUILayout.BeginHorizontal();
+            {
+                for (int i = 0; i < activeModes.Length; i++)
+                {
+                    activeModes[i] = GUILayout.Toggle(activeModes[i], modeNames[i], "button");
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            int height = 800;
+            if (anyTrue(activeModes))
+            {
+                height = 800 / numTrue(activeModes);
+            }
+
+            if (activeModes[0])
+            {
+                onSearch(height);
+            }
+            if (activeModes[1])
+            {
+                onWatch(height);
+            }
+            if (activeModes[2])
+            {
+                onExecute(height);
+            }
+            if (activeModes[3])
+            {
+                onLogs(height);
+            }
+            if (activeModes[4])
+            {
+                onInfo(height);
+            }
+
+            GUI.DragWindow();
+        }
+        private void onSearch(int height)
+        {
             GUI.skin.button.alignment = TextAnchor.MiddleLeft;
 
-            GUILayout.BeginHorizontal();
+            GUILayout.BeginHorizontal("box", GUILayout.Height(height));
             {
                 GUILayout.BeginVertical(GUILayout.Width(150));
                 {
@@ -171,7 +215,9 @@ namespace Kreeper
                 }
                 GUILayout.EndVertical();
 
-                GUILayout.BeginVertical("box");
+                GUILayout.FlexibleSpace();
+
+                GUILayout.BeginVertical(GUILayout.Width(411));
                 {
                     GUILayout.Label(currentType.type.Assembly.FullName.Substring(0, currentType.type.Assembly.FullName.IndexOf(',')) + " - " + currentType.name);
                     GUILayout.BeginHorizontal();
@@ -224,21 +270,65 @@ namespace Kreeper
             }
             GUILayout.EndHorizontal();
 
-            GUI.DragWindow();
+            GUI.skin.button.alignment = TextAnchor.MiddleCenter;
+        }
+        private void onWatch(int height)
+        {
+            GUILayout.BeginHorizontal("box", GUILayout.Height(height));
+            {
+                GUILayout.Label("Watcher");
+            }
+            GUILayout.EndHorizontal();
+        }
+        private void onExecute(int height)
+        {
+            GUILayout.BeginHorizontal("box", GUILayout.Height(height));
+            {
+                GUILayout.Label("Execute");
+            }
+            GUILayout.EndHorizontal();
+        }
+        private void onLogs(int height)
+        {
+            GUILayout.BeginHorizontal("box", GUILayout.Height(height));
+            {
+                GUILayout.Label("Logs");
+            }
+            GUILayout.EndHorizontal();
+        }
+        private void onInfo(int height)
+        {
+            GUILayout.BeginHorizontal("box", GUILayout.Height(height));
+            {
+                GUILayout.Label("Info");
+            }
+            GUILayout.EndHorizontal();
         }
 
-        private void onTypeButton(Type t)
+        private bool anyTrue(bool[] array)
         {
-            try
-            {
-                object[] o = FindObjectsOfType(t); //only works for gameobjects
-            }
-            catch
-            {
+            bool any = false;
 
+            foreach (bool b in array)
+            {
+                any = any || b;
             }
-            FieldInfo[] f = t.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance);
-            MethodInfo[] m = t.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance);
+
+            return any;
+        }
+        private int numTrue(bool[] array)
+        {
+            int num = 0;
+
+            foreach (bool b in array)
+            {
+                if (b)
+                {
+                    num++;
+                }
+            }
+
+            return num;
         }
     }
 }
