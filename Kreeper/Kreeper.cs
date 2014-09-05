@@ -62,7 +62,7 @@ namespace Kreeper
         Color highlightColor = XKCDColors.LightBlue;
 
         bool[] activeModes = new bool[5];
-        string[] modeNames = { "Search", "Watch", "Execute", "Logs", "Info" };
+        string[] modeNames = { "Search", "Watch", "Execute", "Logs", "Memory" };
 
         private void Start()
         {
@@ -137,7 +137,7 @@ namespace Kreeper
             }
             if (activeModes[4])
             {
-                onInfo(height);
+                onMemory(height);
             }
 
             GUI.DragWindow();
@@ -296,11 +296,11 @@ namespace Kreeper
             }
             GUILayout.EndHorizontal();
         }
-        private void onInfo(int height)
+        private void onMemory(int height)
         {
             GUILayout.BeginHorizontal("box", GUILayout.Height(height));
             {
-                GUILayout.Label("Info");
+                GUILayout.Label("Memory");
             }
             GUILayout.EndHorizontal();
         }
