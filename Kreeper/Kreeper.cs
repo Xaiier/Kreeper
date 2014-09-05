@@ -38,26 +38,39 @@ namespace Kreeper
         }
     }
 
+    public class WatchItem
+    {
+        public FieldInfo field;
+        public UnityEngine.Object obj;
+
+        public WatchItem(FieldInfo f)
+        {
+            field = f;
+            obj = UnityEngine.Object.FindObjectOfType(f.DeclaringType);
+        }
+    }
+
     [KSPAddon(KSPAddon.Startup.Instantly, true)]
     public class Kreeper : MonoBehaviour
     {
         Rect window = new Rect(0, 0, 800, 0);
         List<AssemblyData> assemblies = new List<AssemblyData>();
 
+        //SEARCH
         string assemblySearch = "";
+        string typeSearch = "";
+        string variableSearch = "";
+        string methodSearch = "";
         Vector2 assemblyScroll = new Vector2(0, 0);
         int selectedAssembly = 0;
-
-        string typeSearch = "";
         Vector2 typeScroll = new Vector2(0, 0);
-
-        string variableSearch = "";
         Vector2 variableScroll = new Vector2(0, 0);
-
-        string methodSearch = "";
         Vector2 methodScroll = new Vector2(0, 0);
-
         TypeData currentType;
+
+        //WATCH
+        List<WatchItem> watchList = new List<WatchItem>();
+        Vector2 watchScroll = new Vector2(0, 0);
 
         Color highlightColor = XKCDColors.LightBlue;
 
@@ -235,6 +248,7 @@ namespace Kreeper
                                         if (GUILayout.Button(f.Name))
                                         {
                                             print(f.GetValue(FindObjectOfType(currentType.type)));
+                                            watchList.Add(new WatchItem(f));
                                         }
                                     }
                                 }
@@ -276,7 +290,46 @@ namespace Kreeper
         {
             GUILayout.BeginHorizontal("box", GUILayout.Height(height));
             {
-                GUILayout.Label("Watcher");
+                watchScroll = GUILayout.BeginScrollView(watchScroll);
+                {
+                    foreach (WatchItem w in watchList)
+                    {
+                        GUILayout.BeginHorizontal();
+                        {
+                            GUILayout.BeginVertical("box", GUILayout.Width(150));
+                            {
+                                GUILayout.Label(w.field.FieldType.ToString());
+                            }
+                            GUILayout.EndVertical();
+
+                            GUILayout.BeginVertical("box", GUILayout.Width(200));
+                            {
+                                GUILayout.Label(w.field.Name.ToString());
+                            }
+                            GUILayout.EndVertical();
+
+                            GUILayout.BeginVertical("box", GUILayout.Width(375));
+                            {
+                                GUILayout.Label(w.field.GetValue(w.obj).ToString());
+                            }
+                            GUILayout.EndVertical();
+
+                            GUILayout.BeginVertical();
+                            {
+                                GUI.skin.button.alignment = TextAnchor.UpperLeft;
+                                if (GUILayout.Button("X", GUILayout.Width(20), GUILayout.Height(20)))
+                                {
+                                    watchList.Remove(w);
+                                    break;
+                                }
+                                GUI.skin.button.alignment = TextAnchor.MiddleCenter;
+                            }
+                            GUILayout.EndVertical();
+                        }
+                        GUILayout.EndHorizontal();
+                    }
+                }
+                GUILayout.EndScrollView();
             }
             GUILayout.EndHorizontal();
         }
