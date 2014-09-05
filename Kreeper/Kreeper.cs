@@ -65,7 +65,7 @@ namespace Kreeper
         {
             UnityEngine.Object.DontDestroyOnLoad(this);
 
-            using (IEnumerator<AssemblyLoader.LoadedAssembly> enumerator = AssemblyLoader.loadedAssemblies.GetEnumerator())
+            using (IEnumerator<AssemblyLoader.LoadedAssembly> enumerator = AssemblyLoader.loadedAssemblies.GetEnumerator())//this is what the compiler makes a foreach into
             {
                 while (enumerator.MoveNext())
                 {
@@ -100,6 +100,8 @@ namespace Kreeper
         }
         private void onWindow(int windowID)
         {
+            GUI.skin.button.alignment = TextAnchor.MiddleLeft;
+
             GUILayout.BeginHorizontal();
             {
                 GUILayout.BeginVertical(GUILayout.Width(150));
@@ -113,7 +115,7 @@ namespace Kreeper
                             int i = 0;
                             foreach (AssemblyData ad in assemblies)
                             {
-                                if (ad.name.ToLower().StartsWith(assemblySearch.ToLower()))
+                                if (ad.name.ToLower().StartsWith(assemblySearch.ToLower()) || ad.name.ToLower().Contains(assemblySearch.ToLower()))
                                 {
                                     if (selectedAssembly == i)
                                     {
@@ -135,7 +137,7 @@ namespace Kreeper
                 }
                 GUILayout.EndVertical();
 
-                GUILayout.BeginVertical(GUILayout.Width(300));
+                GUILayout.BeginVertical(GUILayout.Width(200));
                 {
                     GUILayout.Label("Types");
                     typeSearch = GUILayout.TextField(typeSearch);
@@ -146,7 +148,7 @@ namespace Kreeper
                             int i = 0;
                             foreach (TypeData td in assemblies[selectedAssembly].types)
                             {
-                                if (td.name.ToLower().StartsWith(typeSearch.ToLower()))
+                                if (td.name.ToLower().StartsWith(typeSearch.ToLower()) || td.name.ToLower().Contains(typeSearch.ToLower()))
                                 {
                                     if (currentType == td)
                                     {
@@ -182,7 +184,7 @@ namespace Kreeper
                             {
                                 foreach (FieldInfo f in currentType.fields)
                                 {
-                                    if (f.Name.ToLower().StartsWith(variableSearch.ToLower()))
+                                    if (f.Name.ToLower().StartsWith(variableSearch.ToLower()) || f.Name.ToLower().Contains(variableSearch.ToLower()))
                                     {
                                         if (GUILayout.Button(f.Name))
                                         {
@@ -203,11 +205,11 @@ namespace Kreeper
                             {
                                 foreach (MethodInfo m in currentType.methods)
                                 {
-                                    if (m.Name.ToLower().StartsWith(methodSearch.ToLower()))
+                                    if (m.Name.ToLower().StartsWith(methodSearch.ToLower()) || m.Name.ToLower().Contains(methodSearch.ToLower()))
                                     {
                                         if (GUILayout.Button(m.Name))
                                         {
-
+                                            m.Invoke(FindObjectOfType(currentType.type), null);
                                         }
                                     }
                                 }
