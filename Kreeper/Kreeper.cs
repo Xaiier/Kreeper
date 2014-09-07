@@ -73,6 +73,9 @@ namespace Kreeper
         Vector2 watchScroll = new Vector2(0, 0);
 
         Color highlightColor = XKCDColors.LightBlue;
+        Color publicColor = new Color(200/255, 255/255, 200/255, 1);
+        Color privateColor = new Color(255 / 255, 200 / 255, 200 / 255, 1);
+        Color staticColor = new Color(255 / 255, 255 / 255, 200 / 255, 1);
 
         bool[] activeModes = new bool[5];
         string[] modeNames = { "Search", "Watch", "Execute", "Logs", "Memory" };
@@ -245,11 +248,24 @@ namespace Kreeper
                                 {
                                     if (f.Name.ToLower().StartsWith(variableSearch.ToLower()) || f.Name.ToLower().Contains(variableSearch.ToLower()))
                                     {
+                                        if (f.IsPublic)
+                                        {
+                                            GUI.contentColor = publicColor;
+                                        }
+                                        if (f.IsPrivate)
+                                        {
+                                            GUI.contentColor = privateColor;
+                                        }
+                                        if (f.IsStatic)
+                                        {
+                                            GUI.contentColor = staticColor;
+                                        }
                                         if (GUILayout.Button(f.Name))
                                         {
                                             print(f.GetValue(FindObjectOfType(currentType.type)));
                                             watchList.Add(new WatchItem(f));
                                         }
+                                        GUI.contentColor = Color.white;
                                     }
                                 }
                             }
