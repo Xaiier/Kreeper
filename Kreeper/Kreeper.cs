@@ -56,7 +56,7 @@ namespace Kreeper
         Rect window = new Rect(0, 0, 800, 0);
         List<AssemblyData> assemblies = new List<AssemblyData>();
 
-        //SEARCH
+        //EXPLORE
         string assemblySearch = "";
         string typeSearch = "";
         string variableSearch = "";
@@ -68,6 +68,8 @@ namespace Kreeper
         Vector2 methodScroll = new Vector2(0, 0);
         TypeData currentType;
 
+        bool showSelector = true;
+
         //WATCH
         List<WatchItem> watchList = new List<WatchItem>();
         Vector2 watchScroll = new Vector2(0, 0);
@@ -78,7 +80,7 @@ namespace Kreeper
         Color staticColor = new Color(255 / 255, 255 / 255, 200 / 255, 1);
 
         bool[] activeModes = new bool[5];
-        string[] modeNames = { "Search", "Watch", "Execute", "Logs", "Memory" };
+        string[] modeNames = { "Explore", "Watch", "Execute", "Logs", "Memory" };
 
         private void Start()
         {
@@ -137,7 +139,7 @@ namespace Kreeper
 
             if (activeModes[0])
             {
-                onSearch(height);
+                onExplore(height);
             }
             if (activeModes[1])
             {
@@ -158,145 +160,103 @@ namespace Kreeper
 
             GUI.DragWindow();
         }
-        private void onSearch(int height)
+        private void onExplore(int height)
         {
             GUI.skin.button.alignment = TextAnchor.MiddleLeft;
 
             GUILayout.BeginHorizontal("box", GUILayout.Height(height));
             {
-                GUILayout.BeginVertical(GUILayout.Width(150));
+                if (showSelector)
                 {
-                    GUILayout.Label("Assemblies");
-                    assemblySearch = GUILayout.TextField(assemblySearch);
-                    assemblyScroll = GUILayout.BeginScrollView(assemblyScroll, "box");
+                    GUILayout.BeginVertical(GUILayout.Width(150));
                     {
-                        GUILayout.BeginVertical();
+                        GUILayout.Label("Assemblies");
+                        assemblySearch = GUILayout.TextField(assemblySearch);
+                        assemblyScroll = GUILayout.BeginScrollView(assemblyScroll, "box");
                         {
-                            int i = 0;
-                            foreach (AssemblyData ad in assemblies)
+                            GUILayout.BeginVertical();
                             {
-                                if (ad.name.ToLower().StartsWith(assemblySearch.ToLower()) || ad.name.ToLower().Contains(assemblySearch.ToLower()))
+                                int i = 0;
+                                foreach (AssemblyData ad in assemblies)
                                 {
-                                    if (selectedAssembly == i)
+                                    if (ad.name.ToLower().StartsWith(assemblySearch.ToLower()) || ad.name.ToLower().Contains(assemblySearch.ToLower()))
                                     {
-                                        GUI.contentColor = highlightColor;
-                                    }
-                                    if (GUILayout.Button(ad.name))
-                                    {
-                                        selectedAssembly = i;
-                                        typeScroll = new Vector2(0, 0);
-                                    }
-                                    GUI.contentColor = Color.white;
-                                }
-                                i++;
-                            }
-                        }
-                        GUILayout.EndVertical();
-                    }
-                    GUILayout.EndScrollView();
-                }
-                GUILayout.EndVertical();
-
-                GUILayout.BeginVertical(GUILayout.Width(200));
-                {
-                    GUILayout.Label("Types");
-                    typeSearch = GUILayout.TextField(typeSearch);
-                    typeScroll = GUILayout.BeginScrollView(typeScroll, "box");
-                    {
-                        GUILayout.BeginVertical();
-                        {
-                            int i = 0;
-                            foreach (TypeData td in assemblies[selectedAssembly].types)
-                            {
-                                if (td.name.ToLower().StartsWith(typeSearch.ToLower()) || td.name.ToLower().Contains(typeSearch.ToLower()))
-                                {
-                                    if (currentType == td)
-                                    {
-                                        GUI.contentColor = highlightColor;
-                                    }
-                                    if (GUILayout.Button(td.name))
-                                    {
-                                        currentType = assemblies[selectedAssembly].types[i];
-                                        variableScroll = new Vector2(0, 0);
-                                        methodScroll = new Vector2(0, 0);
-                                    }
-                                    GUI.contentColor = Color.white;
-                                }
-                                i++;
-                            }
-                        }
-                        GUILayout.EndVertical();
-                    }
-                    GUILayout.EndScrollView();
-                }
-                GUILayout.EndVertical();
-
-                GUILayout.FlexibleSpace();
-
-                GUILayout.BeginVertical(GUILayout.Width(411));
-                {
-                    GUILayout.Label(currentType.type.Assembly.FullName.Substring(0, currentType.type.Assembly.FullName.IndexOf(',')) + " - " + currentType.name);
-                    GUILayout.BeginHorizontal();
-                    {
-                        GUILayout.BeginVertical(GUILayout.Width(200));
-                        {
-                            GUILayout.Label("Variables");
-                            variableSearch = GUILayout.TextField(variableSearch);
-                            variableScroll = GUILayout.BeginScrollView(variableScroll, "box");
-                            {
-                                foreach (FieldInfo f in currentType.fields)
-                                {
-                                    if (f.Name.ToLower().StartsWith(variableSearch.ToLower()) || f.Name.ToLower().Contains(variableSearch.ToLower()))
-                                    {
-                                        if (f.IsPublic)
+                                        if (selectedAssembly == i)
                                         {
-                                            GUI.contentColor = publicColor;
+                                            GUI.contentColor = highlightColor;
                                         }
-                                        if (f.IsPrivate)
+                                        if (GUILayout.Button(ad.name))
                                         {
-                                            GUI.contentColor = privateColor;
-                                        }
-                                        if (f.IsStatic)
-                                        {
-                                            GUI.contentColor = staticColor;
-                                        }
-                                        if (GUILayout.Button(f.Name))
-                                        {
-                                            print(f.GetValue(FindObjectOfType(currentType.type)));
-                                            watchList.Add(new WatchItem(f));
+                                            selectedAssembly = i;
+                                            typeScroll = new Vector2(0, 0);
                                         }
                                         GUI.contentColor = Color.white;
                                     }
+                                    i++;
                                 }
                             }
-                            GUILayout.EndScrollView();
+                            GUILayout.EndVertical();
                         }
-                        GUILayout.EndVertical();
-
-                        GUILayout.BeginVertical(GUILayout.Width(200));
-                        {
-                            GUILayout.Label("Methods");
-                            methodSearch = GUILayout.TextField(methodSearch);
-                            methodScroll = GUILayout.BeginScrollView(methodScroll, "box");
-                            {
-                                foreach (MethodInfo m in currentType.methods)
-                                {
-                                    if (m.Name.ToLower().StartsWith(methodSearch.ToLower()) || m.Name.ToLower().Contains(methodSearch.ToLower()))
-                                    {
-                                        if (GUILayout.Button(m.Name))
-                                        {
-                                            m.Invoke(FindObjectOfType(currentType.type), null);
-                                        }
-                                    }
-                                }
-                            }
-                            GUILayout.EndScrollView();
-                        }
-                        GUILayout.EndVertical();
+                        GUILayout.EndScrollView();
                     }
-                    GUILayout.EndHorizontal();
+                    GUILayout.EndVertical();
+
+                    GUILayout.BeginVertical(GUILayout.Width(200));
+                    {
+                        GUILayout.BeginHorizontal();
+                        {
+                            GUILayout.Label("Types");
+                            GUILayout.FlexibleSpace();
+                            if (GUILayout.Button("<"))
+                            {
+                                showSelector = false;
+                            }
+                        }
+                        GUILayout.EndHorizontal();
+                        typeSearch = GUILayout.TextField(typeSearch);
+                        typeScroll = GUILayout.BeginScrollView(typeScroll, "box");
+                        {
+                            GUILayout.BeginVertical();
+                            {
+                                int i = 0;
+                                foreach (TypeData td in assemblies[selectedAssembly].types)
+                                {
+                                    if (td.name.ToLower().StartsWith(typeSearch.ToLower()) || td.name.ToLower().Contains(typeSearch.ToLower()))
+                                    {
+                                        if (currentType == td)
+                                        {
+                                            GUI.contentColor = highlightColor;
+                                        }
+                                        if (GUILayout.Button(td.name))
+                                        {
+                                            currentType = assemblies[selectedAssembly].types[i];
+                                            variableScroll = new Vector2(0, 0);
+                                            methodScroll = new Vector2(0, 0);
+                                        }
+                                        GUI.contentColor = Color.white;
+                                    }
+                                    i++;
+                                }
+                            }
+                            GUILayout.EndVertical();
+                        }
+                        GUILayout.EndScrollView();
+                    }
+                    GUILayout.EndVertical();
                 }
-                GUILayout.EndVertical();
+                else
+                {
+                    GUILayout.BeginVertical();
+                    {
+                        if (GUILayout.Button(">", GUILayout.Width(20)))
+                        {
+                            showSelector = true;
+                        }
+                    }
+                    GUILayout.EndVertical();
+                }
+
+                onTypeViewer();
             }
             GUILayout.EndHorizontal();
 
@@ -372,6 +332,74 @@ namespace Kreeper
                 GUILayout.Label("Memory");
             }
             GUILayout.EndHorizontal();
+        }
+
+        private void onTypeViewer()
+        {
+            GUILayout.BeginVertical("box", GUILayout.MinWidth(411), GUILayout.MaxWidth(800), GUILayout.ExpandWidth(true));
+            {
+                GUILayout.Label(currentType.type.Assembly.FullName.Substring(0, currentType.type.Assembly.FullName.IndexOf(',')) + " - " + currentType.name);
+                GUILayout.BeginHorizontal();
+                {
+                    GUILayout.BeginVertical(GUILayout.MinWidth(200), GUILayout.MaxWidth(400), GUILayout.ExpandWidth(true));
+                    {
+                        GUILayout.Label("Variables");
+                        variableSearch = GUILayout.TextField(variableSearch);
+                        variableScroll = GUILayout.BeginScrollView(variableScroll, "box");
+                        {
+                            foreach (FieldInfo f in currentType.fields)
+                            {
+                                if (f.Name.ToLower().StartsWith(variableSearch.ToLower()) || f.Name.ToLower().Contains(variableSearch.ToLower()))
+                                {
+                                    if (f.IsPublic)
+                                    {
+                                        GUI.contentColor = publicColor;
+                                    }
+                                    if (f.IsPrivate)
+                                    {
+                                        GUI.contentColor = privateColor;
+                                    }
+                                    if (f.IsStatic)
+                                    {
+                                        GUI.contentColor = staticColor;
+                                    }
+                                    if (GUILayout.Button(f.Name))
+                                    {
+                                        print(f.GetValue(FindObjectOfType(currentType.type)));
+                                        watchList.Add(new WatchItem(f));
+                                    }
+                                    GUI.contentColor = Color.white;
+                                }
+                            }
+                        }
+                        GUILayout.EndScrollView();
+                    }
+                    GUILayout.EndVertical();
+
+                    GUILayout.BeginVertical(GUILayout.MinWidth(200), GUILayout.MaxWidth(400), GUILayout.ExpandWidth(true));
+                    {
+                        GUILayout.Label("Methods");
+                        methodSearch = GUILayout.TextField(methodSearch);
+                        methodScroll = GUILayout.BeginScrollView(methodScroll, "box");
+                        {
+                            foreach (MethodInfo m in currentType.methods)
+                            {
+                                if (m.Name.ToLower().StartsWith(methodSearch.ToLower()) || m.Name.ToLower().Contains(methodSearch.ToLower()))
+                                {
+                                    if (GUILayout.Button(m.Name))
+                                    {
+                                        m.Invoke(FindObjectOfType(currentType.type), null);
+                                    }
+                                }
+                            }
+                        }
+                        GUILayout.EndScrollView();
+                    }
+                    GUILayout.EndVertical();
+                }
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.EndVertical();
         }
 
         private bool anyTrue(bool[] array)
