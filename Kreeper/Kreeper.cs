@@ -86,23 +86,18 @@ namespace Kreeper
         {
             UnityEngine.Object.DontDestroyOnLoad(this);
 
-            using (IEnumerator<AssemblyLoader.LoadedAssembly> enumerator = AssemblyLoader.loadedAssemblies.GetEnumerator())//this is what the compiler makes a foreach into
+            foreach (var a in AssemblyLoader.loadedAssemblies)
             {
-                while (enumerator.MoveNext())
+                string name = a.name;
+                string version = a.assembly.FullName.Substring(a.assembly.FullName.IndexOf('=') + 1, a.assembly.FullName.IndexOf(",", a.assembly.FullName.IndexOf("=")) - (a.assembly.FullName.IndexOf("=") + 1));
+
+                List<TypeData> types = new List<TypeData>();
+                foreach (Type t in a.assembly.GetTypes())
                 {
-                    AssemblyLoader.LoadedAssembly current = enumerator.Current;
-
-                    string name = current.assembly.FullName.Substring(0, current.assembly.FullName.IndexOf(','));
-                    string version = current.assembly.FullName.Substring(current.assembly.FullName.IndexOf(','), current.assembly.FullName.IndexOf(',',current.assembly.FullName.IndexOf(',')));//TODO this doesn't work
-
-                    List<TypeData> types = new List<TypeData>();
-                    foreach (Type t in current.assembly.GetTypes())
-                    {
-                        types.Add(new TypeData(t));
-                    }
-
-                    assemblies.Add(new AssemblyData(name, version, types));
+                    types.Add(new TypeData(t));
                 }
+
+                assemblies.Add(new AssemblyData(name, version, types));
             }
 
             currentType = assemblies[0].types[0];
