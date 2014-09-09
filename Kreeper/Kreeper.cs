@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using UnityEngine;
 using KSP.IO;
 
@@ -79,8 +80,8 @@ namespace Kreeper
         Color privateColor = Color.red;
         Color staticColor = Color.yellow;
 
-        bool[] activeModes = new bool[5];
-        string[] modeNames = { "Explore", "Watch", "Execute", "Logs", "Memory" };
+        List<bool> activeModes = new List<bool>(){ false, false, false, false, false };
+        List<string> modeNames = new List<string>(){ "Explore", "Watch", "Execute", "Logs", "Memory" };
 
         private void Start()
         {
@@ -120,7 +121,7 @@ namespace Kreeper
         {
             GUILayout.BeginHorizontal();
             {
-                for (int i = 0; i < activeModes.Length; i++)
+                for (int i = 0; i < activeModes.Count; i++)
                 {
                     activeModes[i] = GUILayout.Toggle(activeModes[i], modeNames[i], "button");
                 }
@@ -128,9 +129,9 @@ namespace Kreeper
             GUILayout.EndHorizontal();
 
             int height = 800;
-            if (anyTrue(activeModes))
+            if (activeModes.Count(c => c) > 0)
             {
-                height = 800 / numTrue(activeModes);
+                height = 800 / activeModes.Count(c => c);
             }
 
             if (activeModes[0])
@@ -331,41 +332,48 @@ namespace Kreeper
                 {
                     watchScroll = GUILayout.BeginScrollView(watchScroll);
                     {
-                        foreach (WatchItem w in watchList)
+                        if (watchList.Count > 0)
                         {
-                            GUILayout.BeginHorizontal();
+                            foreach (WatchItem w in watchList)
                             {
-                                GUILayout.BeginVertical("box", GUILayout.Width(150));
+                                GUILayout.BeginHorizontal();
                                 {
-                                    GUILayout.Label(w.field.FieldType.ToString());
-                                }
-                                GUILayout.EndVertical();
-
-                                GUILayout.BeginVertical("box", GUILayout.Width(200));
-                                {
-                                    GUILayout.Label(w.field.Name.ToString());
-                                }
-                                GUILayout.EndVertical();
-
-                                GUILayout.BeginVertical("box", GUILayout.Width(375));
-                                {
-                                    GUILayout.Label(w.field.GetValue(w.obj).ToString());
-                                }
-                                GUILayout.EndVertical();
-
-                                GUILayout.BeginVertical();
-                                {
-                                    GUI.skin.button.alignment = TextAnchor.UpperLeft;
-                                    if (GUILayout.Button("X", GUILayout.Width(20), GUILayout.Height(20)))
+                                    GUILayout.BeginVertical("box", GUILayout.Width(150));
                                     {
-                                        watchList.Remove(w);
-                                        break;
+                                        GUILayout.Label(w.field.FieldType.ToString());
                                     }
-                                    GUI.skin.button.alignment = TextAnchor.MiddleCenter;
+                                    GUILayout.EndVertical();
+
+                                    GUILayout.BeginVertical("box", GUILayout.Width(200));
+                                    {
+                                        GUILayout.Label(w.field.Name.ToString());
+                                    }
+                                    GUILayout.EndVertical();
+
+                                    GUILayout.BeginVertical("box", GUILayout.Width(375));
+                                    {
+                                        GUILayout.Label(w.field.GetValue(w.obj).ToString());
+                                    }
+                                    GUILayout.EndVertical();
+
+                                    GUILayout.BeginVertical();
+                                    {
+                                        GUI.skin.button.alignment = TextAnchor.UpperLeft;
+                                        if (GUILayout.Button("X", GUILayout.Width(20), GUILayout.Height(20)))
+                                        {
+                                            watchList.Remove(w);
+                                            break;
+                                        }
+                                        GUI.skin.button.alignment = TextAnchor.MiddleCenter;
+                                    }
+                                    GUILayout.EndVertical();
                                 }
-                                GUILayout.EndVertical();
+                                GUILayout.EndHorizontal();
                             }
-                            GUILayout.EndHorizontal();
+                        }
+                        else
+                        {
+                            GUILayout.Label("No variables being watched, add some in the Explore menu");
                         }
                     }
                     GUILayout.EndScrollView();
@@ -396,32 +404,6 @@ namespace Kreeper
                 }
                 GUILayout.EndHorizontal();
             }
-
-        private bool anyTrue(bool[] array)
-        {
-            bool any = false;
-
-            foreach (bool b in array)
-            {
-                any = any || b;
-            }
-
-            return any;
-        }
-        private int numTrue(bool[] array)
-        {
-            int num = 0;
-
-            foreach (bool b in array)
-            {
-                if (b)
-                {
-                    num++;
-                }
-            }
-
-            return num;
-        }
     }
 }
    
