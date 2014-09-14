@@ -13,9 +13,9 @@ namespace Kreeper
     {
         public string name;
         public string version;
-        public List<TypeData> types;
+        public List<Type> types;
 
-        public AssemblyData(string n, string v, List<TypeData> t)
+        public AssemblyData(string n, string v, List<Type> t)
         {
             name = n;
             version = v;
@@ -23,19 +23,17 @@ namespace Kreeper
         }
     }
 
-    public class TypeData
+    public class ObjectData
     {
-        public Type type;
+        public object obj;
         public FieldInfo[] fields;
         public MethodInfo[] methods;
-        public string name;
 
-        public TypeData(Type t)
+        public ObjectData(object o)
         {
-            type = t;
-            fields = t.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance);
-            methods = t.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance);
-            name = t.Name;
+            obj = o;
+            fields = o.GetType().GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance);
+            methods = o.GetType().GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance);
         }
     }
 
@@ -57,51 +55,49 @@ namespace Kreeper
         Rect window = new Rect(0, 0, 800, 0);
         List<AssemblyData> assemblies = new List<AssemblyData>();
 
+        List<bool> activeModes = new List<bool>() { false, false, false, false, false };
+        List<string> modeNames = new List<string>() { "Explore", "Watch", "Execute", "Logs", "Memory" };
+
         //EXPLORE
+        bool showSelector = true;
+
         string assemblySearch = "";
         string typeSearch = "";
-        string variableSearch = "";
+        string primarySearch = "";
         string methodSearch = "";
+
         Vector2 assemblyScroll = new Vector2(0, 0);
         int selectedAssembly = 0;
         Vector2 typeScroll = new Vector2(0, 0);
-        Vector2 variableScroll = new Vector2(0, 0);
+        Vector2 primaryScroll = new Vector2(0, 0);
         Vector2 methodScroll = new Vector2(0, 0);
-        TypeData currentType;
-
-        bool showSelector = true;
-
-        //WATCH
-        List<WatchItem> watchList = new List<WatchItem>();
-        Vector2 watchScroll = new Vector2(0, 0);
 
         Color highlightColor = XKCDColors.LightBlue;
         Color publicColor = Color.green;
         Color privateColor = Color.red;
         Color staticColor = Color.yellow;
 
-        List<bool> activeModes = new List<bool>(){ false, false, false, false, false };
-        List<string> modeNames = new List<string>(){ "Explore", "Watch", "Execute", "Logs", "Memory" };
+        Type originType = null;
+        List<object> objectHistory = new List<object>();
+        ObjectData currentObject = null; //this is just objectHistory's last element, with reflection data
+
+        //WATCH
+        List<WatchItem> watchList = new List<WatchItem>();
+        Vector2 watchScroll = new Vector2(0, 0);
 
         private void Start()
         {
             UnityEngine.Object.DontDestroyOnLoad(this);
 
-            foreach (var a in AssemblyLoader.loadedAssemblies)
+            foreach (AssemblyLoader.LoadedAssembly a in AssemblyLoader.loadedAssemblies)
             {
                 string name = a.name;
                 string version = a.assembly.FullName.Substring(a.assembly.FullName.IndexOf('=') + 1, a.assembly.FullName.IndexOf(",", a.assembly.FullName.IndexOf("=")) - (a.assembly.FullName.IndexOf("=") + 1));
 
-                List<TypeData> types = new List<TypeData>();
-                foreach (Type t in a.assembly.GetTypes())
-                {
-                    types.Add(new TypeData(t));
-                }
+                List<Type> types = new List<Type>(a.assembly.GetTypes());
 
                 assemblies.Add(new AssemblyData(name, version, types));
             }
-
-            currentType = assemblies[0].types[0];
         }
         private void Awake()
         {
@@ -157,6 +153,7 @@ namespace Kreeper
 
             GUI.DragWindow();
         }
+
             private void onExplore(int height)
             {
                 GUI.skin.button.alignment = TextAnchor.MiddleLeft;
@@ -165,7 +162,7 @@ namespace Kreeper
                 {
                     if (showSelector)
                     {
-                        GUILayout.BeginVertical(GUILayout.Width(150));
+                        GUILayout.BeginVertical(GUILayout.Width(150)); //ASSEMBLY LIST
                         {
                             GUILayout.Label("Assemblies");
                             assemblySearch = GUILayout.TextField(assemblySearch);
@@ -178,10 +175,7 @@ namespace Kreeper
                                     {
                                         if (ad.name.ToLower().StartsWith(assemblySearch.ToLower()) || ad.name.ToLower().Contains(assemblySearch.ToLower()))
                                         {
-                                            if (selectedAssembly == i)
-                                            {
-                                                GUI.contentColor = highlightColor;
-                                            }
+                                            if (selectedAssembly == i) GUI.contentColor = highlightColor;
                                             if (GUILayout.Button(ad.name))
                                             {
                                                 selectedAssembly = i;
@@ -196,9 +190,9 @@ namespace Kreeper
                             }
                             GUILayout.EndScrollView();
                         }
-                        GUILayout.EndVertical();
+                        GUILayout.EndVertical(); //END ASSEMBLY LIST
 
-                        GUILayout.BeginVertical(GUILayout.Width(200));
+                        GUILayout.BeginVertical(GUILayout.Width(200)); //TYPE LIST
                         {
                             GUILayout.BeginHorizontal();
                             {
@@ -216,18 +210,22 @@ namespace Kreeper
                                 GUILayout.BeginVertical();
                                 {
                                     int i = 0;
-                                    foreach (TypeData td in assemblies[selectedAssembly].types)
+                                    foreach (Type t in assemblies[selectedAssembly].types)
                                     {
-                                        if (td.name.ToLower().StartsWith(typeSearch.ToLower()) || td.name.ToLower().Contains(typeSearch.ToLower()))
+                                        if (t.Name.ToLower().StartsWith(typeSearch.ToLower()) || t.Name.ToLower().Contains(typeSearch.ToLower()))
                                         {
-                                            if (currentType == td)
+                                            if (originType == t)
                                             {
                                                 GUI.contentColor = highlightColor;
                                             }
-                                            if (GUILayout.Button(td.name))
+                                            if (GUILayout.Button(t.Name))
                                             {
-                                                currentType = assemblies[selectedAssembly].types[i];
-                                                variableScroll = new Vector2(0, 0);
+                                                originType = assemblies[selectedAssembly].types[i];
+                                                objectHistory.RemoveRange(0, objectHistory.Count);
+                                                objectHistory.Add(FindObjectsOfType(t));
+                                                currentObject = new ObjectData(objectHistory[objectHistory.Count - 1]);
+
+                                                primaryScroll = new Vector2(0, 0);
                                                 methodScroll = new Vector2(0, 0);
                                             }
                                             GUI.contentColor = Color.white;
@@ -239,9 +237,9 @@ namespace Kreeper
                             }
                             GUILayout.EndScrollView();
                         }
-                        GUILayout.EndVertical();
+                        GUILayout.EndVertical();//END TYPE LIST
                     }
-                    else
+                    else //HIDDEN
                     {
                         GUILayout.BeginVertical();
                         {
@@ -252,80 +250,192 @@ namespace Kreeper
                         }
                         GUILayout.EndVertical();
                     }
+                    //END OF TYPE SELECTOR
 
-                    onTypeViewer();
+                    GUILayout.BeginVertical("box", GUILayout.MinWidth(411), GUILayout.MaxWidth(800), GUILayout.ExpandWidth(true));
+                    {
+                        if (originType != null)
+                        {
+                            GUILayout.Label(currentObject.obj.ToString());
+
+                            if (currentObject.obj is IEnumerable)//OBJECT IS A LIST OF OBJECTS
+                            {
+                                primarySearch = GUILayout.TextField(primarySearch);
+                                primaryScroll = GUILayout.BeginScrollView(primaryScroll, "box");
+                                {
+                                    foreach (var a in (IEnumerable)currentObject.obj)
+                                    {
+                                        if (a.ToString().ToLower().StartsWith(primarySearch.ToLower()) || a.ToString().ToLower().Contains(primarySearch.ToLower()))
+                                        {
+                                            if (GUILayout.Button(a.ToString()))
+                                            {
+                                                objectHistory.Add(a);
+                                                currentObject = new ObjectData(a);
+                                            }
+                                        }
+                                    }
+                                }
+                                GUILayout.EndScrollView();
+                            }
+                            else //OBJECT IS A CLASS OR VALUE TYPE
+                            {
+                                GUILayout.BeginHorizontal();
+                                {
+                                    GUILayout.BeginVertical(GUILayout.MinWidth(200), GUILayout.MaxWidth(400), GUILayout.ExpandWidth(true));
+                                    {
+                                        GUILayout.Label("Variables");
+                                        primarySearch = GUILayout.TextField(primarySearch);
+                                        primaryScroll = GUILayout.BeginScrollView(primaryScroll, "box");
+                                        {
+                                            foreach (FieldInfo f in currentObject.fields)
+                                            {
+                                                if (f.Name.ToLower().StartsWith(primarySearch.ToLower()) || f.Name.ToLower().Contains(primarySearch.ToLower()))
+                                                {
+                                                    if (f.IsPublic)
+                                                    {
+                                                        GUI.contentColor = publicColor;
+                                                    }
+                                                    if (f.IsPrivate)
+                                                    {
+                                                        GUI.contentColor = privateColor;
+                                                    }
+                                                    if (f.IsStatic)
+                                                    {
+                                                        GUI.contentColor = staticColor;
+                                                    }
+                                                    if (GUILayout.Button(f.Name))
+                                                    {
+                                                        //TypedReference reference = __makeref(currentObject.obj);
+                                                        //objectHistory.Add(f.GetValueDirect(reference));
+                                                        //currentObject = new ObjectData(f.GetValueDirect(reference));
+
+                                                        objectHistory.Add(f.GetValue(currentObject.obj));
+                                                        currentObject = new ObjectData(f.GetValue(currentObject.obj));
+                                                    }
+                                                    GUI.contentColor = Color.white;
+                                                }
+                                            }
+                                        }
+                                        GUILayout.EndScrollView();
+                                    }
+                                    GUILayout.EndVertical();
+
+                                    GUILayout.BeginVertical(GUILayout.MinWidth(200), GUILayout.MaxWidth(400), GUILayout.ExpandWidth(true));
+                                    {
+                                        GUILayout.Label("Methods");
+                                        methodSearch = GUILayout.TextField(methodSearch);
+                                        methodScroll = GUILayout.BeginScrollView(methodScroll, "box");
+                                        {
+                                            foreach (MethodInfo m in currentObject.methods)
+                                            {
+                                                if (m.Name.ToLower().StartsWith(methodSearch.ToLower()) || m.Name.ToLower().Contains(methodSearch.ToLower()))
+                                                {
+                                                    if (m.IsPublic)
+                                                    {
+                                                        GUI.contentColor = publicColor;
+                                                    }
+                                                    if (m.IsPrivate)
+                                                    {
+                                                        GUI.contentColor = privateColor;
+                                                    }
+                                                    if (m.IsStatic)
+                                                    {
+                                                        GUI.contentColor = staticColor;
+                                                    }
+                                                    if (GUILayout.Button(m.Name))
+                                                    {
+                                                        //m.Invoke(FindObjectOfType(currentObject.GetType()), null);
+                                                    }
+                                                    GUI.contentColor = Color.white;
+                                                }
+                                            }
+                                        }
+                                        GUILayout.EndScrollView();
+                                    }
+                                    GUILayout.EndVertical();
+                                }
+                                GUILayout.EndHorizontal();
+                            }
+
+                        }
+                        else
+                        {
+                            GUILayout.Label("Select a type to begin");
+                        }
+                    }
+                    GUILayout.EndVertical();
                 }
                 GUILayout.EndHorizontal();
 
                 GUI.skin.button.alignment = TextAnchor.MiddleCenter;
             }
-                private void onTypeViewer()
-                {
-                    GUILayout.BeginVertical("box", GUILayout.MinWidth(411), GUILayout.MaxWidth(800), GUILayout.ExpandWidth(true));
-                    {
-                        GUILayout.Label(currentType.type.Assembly.FullName.Substring(0, currentType.type.Assembly.FullName.IndexOf(',')) + " - " + currentType.name);
-                        GUILayout.BeginHorizontal();
-                        {
-                            GUILayout.BeginVertical(GUILayout.MinWidth(200), GUILayout.MaxWidth(400), GUILayout.ExpandWidth(true));
-                            {
-                                GUILayout.Label("Variables");
-                                variableSearch = GUILayout.TextField(variableSearch);
-                                variableScroll = GUILayout.BeginScrollView(variableScroll, "box");
-                                {
-                                    foreach (FieldInfo f in currentType.fields)
-                                    {
-                                        if (f.Name.ToLower().StartsWith(variableSearch.ToLower()) || f.Name.ToLower().Contains(variableSearch.ToLower()))
-                                        {
-                                            if (f.IsPublic)
-                                            {
-                                                GUI.contentColor = publicColor;
-                                            }
-                                            if (f.IsPrivate)
-                                            {
-                                                GUI.contentColor = privateColor;
-                                            }
-                                            if (f.IsStatic)
-                                            {
-                                                GUI.contentColor = staticColor;
-                                            }
-                                            if (GUILayout.Button(f.Name))
-                                            {
-                                                print(f.GetValue(FindObjectOfType(currentType.type)));
-                                                watchList.Add(new WatchItem(f));
-                                            }
-                                            GUI.contentColor = Color.white;
-                                        }
-                                    }
-                                }
-                                GUILayout.EndScrollView();
-                            }
-                            GUILayout.EndVertical();
+                //private void onTypeViewer()
+                //{
+                //    GUILayout.BeginVertical("box", GUILayout.MinWidth(411), GUILayout.MaxWidth(800), GUILayout.ExpandWidth(true));
+                //    {
+                //        GUILayout.Label(currentType.type.Assembly.FullName.Substring(0, currentType.type.Assembly.FullName.IndexOf(',')) + " - " + currentType.name);
+                //        GUILayout.BeginHorizontal();
+                //        {
+                //            GUILayout.BeginVertical(GUILayout.MinWidth(200), GUILayout.MaxWidth(400), GUILayout.ExpandWidth(true));
+                //            {
+                //                GUILayout.Label("Variables");
+                //                variableSearch = GUILayout.TextField(variableSearch);
+                //                variableScroll = GUILayout.BeginScrollView(variableScroll, "box");
+                //                {
+                //                    foreach (FieldInfo f in currentType.fields)
+                //                    {
+                //                        if (f.Name.ToLower().StartsWith(variableSearch.ToLower()) || f.Name.ToLower().Contains(variableSearch.ToLower()))
+                //                        {
+                //                            if (f.IsPublic)
+                //                            {
+                //                                GUI.contentColor = publicColor;
+                //                            }
+                //                            if (f.IsPrivate)
+                //                            {
+                //                                GUI.contentColor = privateColor;
+                //                            }
+                //                            if (f.IsStatic)
+                //                            {
+                //                                GUI.contentColor = staticColor;
+                //                            }
+                //                            if (GUILayout.Button(f.Name))
+                //                            {
+                //                                print(f.GetValue(FindObjectOfType(currentType.type)));
+                //                                watchList.Add(new WatchItem(f));
+                //                            }
+                //                            GUI.contentColor = Color.white;
+                //                        }
+                //                    }
+                //                }
+                //                GUILayout.EndScrollView();
+                //            }
+                //            GUILayout.EndVertical();
 
-                            GUILayout.BeginVertical(GUILayout.MinWidth(200), GUILayout.MaxWidth(400), GUILayout.ExpandWidth(true));
-                            {
-                                GUILayout.Label("Methods");
-                                methodSearch = GUILayout.TextField(methodSearch);
-                                methodScroll = GUILayout.BeginScrollView(methodScroll, "box");
-                                {
-                                    foreach (MethodInfo m in currentType.methods)
-                                    {
-                                        if (m.Name.ToLower().StartsWith(methodSearch.ToLower()) || m.Name.ToLower().Contains(methodSearch.ToLower()))
-                                        {
-                                            if (GUILayout.Button(m.Name))
-                                            {
-                                                m.Invoke(FindObjectOfType(currentType.type), null);
-                                            }
-                                        }
-                                    }
-                                }
-                                GUILayout.EndScrollView();
-                            }
-                            GUILayout.EndVertical();
-                        }
-                        GUILayout.EndHorizontal();
-                    }
-                    GUILayout.EndVertical();
-                }
+                //            GUILayout.BeginVertical(GUILayout.MinWidth(200), GUILayout.MaxWidth(400), GUILayout.ExpandWidth(true));
+                //            {
+                //                GUILayout.Label("Methods");
+                //                methodSearch = GUILayout.TextField(methodSearch);
+                //                methodScroll = GUILayout.BeginScrollView(methodScroll, "box");
+                //                {
+                //                    foreach (MethodInfo m in currentType.methods)
+                //                    {
+                //                        if (m.Name.ToLower().StartsWith(methodSearch.ToLower()) || m.Name.ToLower().Contains(methodSearch.ToLower()))
+                //                        {
+                //                            if (GUILayout.Button(m.Name))
+                //                            {
+                //                                m.Invoke(FindObjectOfType(currentType.type), null);
+                //                            }
+                //                        }
+                //                    }
+                //                }
+                //                GUILayout.EndScrollView();
+                //            }
+                //            GUILayout.EndVertical();
+                //        }
+                //        GUILayout.EndHorizontal();
+                //    }
+                //    GUILayout.EndVertical();
+                //}
             private void onWatch(int height)
             {
                 GUILayout.BeginHorizontal("box", GUILayout.Height(height));
@@ -336,21 +446,21 @@ namespace Kreeper
                         {
                             foreach (WatchItem w in watchList)
                             {
-                                GUILayout.BeginHorizontal();
+                                GUILayout.BeginHorizontal("box");
                                 {
-                                    GUILayout.BeginVertical("box", GUILayout.Width(150));
+                                    GUILayout.BeginVertical(GUILayout.Width(150));
                                     {
                                         GUILayout.Label(w.field.FieldType.ToString());
                                     }
                                     GUILayout.EndVertical();
 
-                                    GUILayout.BeginVertical("box", GUILayout.Width(200));
+                                    GUILayout.BeginVertical(GUILayout.Width(200));
                                     {
                                         GUILayout.Label(w.field.Name.ToString());
                                     }
                                     GUILayout.EndVertical();
 
-                                    GUILayout.BeginVertical("box", GUILayout.Width(375));
+                                    GUILayout.BeginVertical(GUILayout.Width(375));
                                     {
                                         GUILayout.Label(w.field.GetValue(w.obj).ToString());
                                     }
@@ -384,7 +494,7 @@ namespace Kreeper
             {
                 GUILayout.BeginHorizontal("box", GUILayout.Height(height));
                 {
-                    GUILayout.Label("Execute");
+                    GUILayout.Label("Execute will be here");
                 }
                 GUILayout.EndHorizontal();
             }
@@ -392,7 +502,7 @@ namespace Kreeper
             {
                 GUILayout.BeginHorizontal("box", GUILayout.Height(height));
                 {
-                    GUILayout.Label("Logs");
+                    GUILayout.Label("Logs will be here");
                 }
                 GUILayout.EndHorizontal();
             }
@@ -400,7 +510,7 @@ namespace Kreeper
             {
                 GUILayout.BeginHorizontal("box", GUILayout.Height(height));
                 {
-                    GUILayout.Label("Memory");
+                    GUILayout.Label("Memory will be here");
                 }
                 GUILayout.EndHorizontal();
             }
